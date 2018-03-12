@@ -29,6 +29,8 @@ minetest.register_entity("itemframes:item",{
 		if self.nodename == "itemframes:pedestal" then
 			self.object:set_properties({automatic_rotate = 1})
 		end
+		print("  loading " .. self.nodename .. " at " ..
+			minetest.pos_to_string(self.object:get_pos(), 0), self.texture)
 	end,
 	get_staticdata = function(self)
 		if self.nodename ~= nil and self.texture ~= nil then
@@ -55,6 +57,7 @@ local remove_item = function(pos, node)
 	if objs then
 		for _, obj in ipairs(objs) do
 			if obj and obj:get_luaentity() and obj:get_luaentity().name == "itemframes:item" then
+				print("  removing " .. dump(obj:get_properties().textures[1]))
 				obj:remove()
 			end
 		end
@@ -62,6 +65,7 @@ local remove_item = function(pos, node)
 end
 
 local update_item = function(pos, node)
+	print("Updating " .. node.name .. " at " .. minetest.pos_to_string(pos))
 	remove_item(pos, node)
 	local meta = minetest.get_meta(pos)
 	if meta:get_string("item") ~= "" then
@@ -76,6 +80,7 @@ local update_item = function(pos, node)
 		end
 		tmp.nodename = node.name
 		tmp.texture = ItemStack(meta:get_string("item")):get_name()
+		print("  adding " .. tmp.texture .. " at " .. minetest.pos_to_string(pos))
 		local e = minetest.add_entity(pos,"itemframes:item")
 		if node.name == "itemframes:frame" then
 			local yaw = math.pi * 2 - node.param2 * math.pi / 2
@@ -219,7 +224,7 @@ minetest.register_node("itemframes:pedestal",{
 
 -- automatically restore entities lost from frames/pedestals
 -- due to /clearobjects or similar
-
+--[[
 minetest.register_abm({
 	nodenames = {"itemframes:frame", "itemframes:pedestal"},
 	interval = 15,
@@ -237,6 +242,43 @@ minetest.register_abm({
 
 		if num > 0 then return end
 		update_item(pos, node)
+	end
+})
+--]]
+
+minetest.register_lbm({
+	label = "Maintain itemframe and pedestal entities",
+	name = "itemframes:maintain_entities",
+	nodenames = {"itemframes:frame", "itemframes:pedestal"},
+	run_at_every_load = true,
+	action = function(pos, node)
+		minetest.after(15,
+			function(pos, node)
+				local meta = minetest.get_meta(pos)
+				if meta:get_string("item") ~= "" then
+					local entity_pos = pos
+					if node.name == "itemframes:pedestal" then
+						entity_pos = {x=pos.x,y=pos.y+1,z=pos.z}
+					end
+					local objs = minetest.get_objects_inside_radius(entity_pos, 0.5)
+
+					print("Found " .. #objs .. " objects in " .. node.name .. " at "
+						.. minetest.pos_to_string(pos))
+					local counts = {}
+					for _,obj in pairs(objs) do
+						local texture = dump(obj:get_properties().textures[1])
+						counts[texture] = (counts[texture] or 0) + 1
+					end
+					for k,v in pairs(counts) do
+						print("", v, k)
+					end
+
+					if #objs ~= 1 then
+						update_item(pos, node)
+					end
+				end
+			end,
+		pos, node)
 	end
 })
 
