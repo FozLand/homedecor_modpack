@@ -219,24 +219,31 @@ minetest.register_node("itemframes:pedestal",{
 
 -- automatically restore entities lost from frames/pedestals
 -- due to /clearobjects or similar
-
-minetest.register_abm({
+minetest.register_lbm({
+	label = "Maintain itemframe and pedestal entities",
+	name = "itemframes:maintain_entities",
 	nodenames = {"itemframes:frame", "itemframes:pedestal"},
-	interval = 15,
-	chance = 1,
-	action = function(pos, node, active_object_count, active_object_count_wider)
-		local num
+	run_at_every_load = true,
+	action = function(pos, node)
+		local meta = minetest.get_meta(pos)
+		if meta:get_string("item") ~= "" then
+			local entity_pos = pos
+			if node.name == "itemframes:pedestal" then
+				entity_pos = {x=pos.x,y=pos.y+1,z=pos.z}
+			end
+			local objs = minetest.get_objects_inside_radius(entity_pos, 0.5)
 
-		if node.name == "itemframes:frame" then
-			num = #minetest.get_objects_inside_radius(pos, 0.5)
-		elseif node.name == "itemframes:pedestal" then
-			pos.y = pos.y + 1
-			num = #minetest.get_objects_inside_radius(pos, 0.5)
-			pos.y = pos.y - 1
+			if #objs ~= 1 then
+
+				if #objs > 1 then
+					minetest.log("action","Removing " .. #objs-1 .. " extra " ..
+						dump(objs[1]:get_properties().textures[1]) .. " found in " ..
+						node.name .. " at " .. minetest.pos_to_string(pos))
+				end
+
+				update_item(pos, node)
+			end
 		end
-
-		if num > 0 then return end
-		update_item(pos, node)
 	end
 })
 
