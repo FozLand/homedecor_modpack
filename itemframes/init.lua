@@ -225,22 +225,25 @@ minetest.register_lbm({
 	nodenames = {"itemframes:frame", "itemframes:pedestal"},
 	run_at_every_load = true,
 	action = function(pos, node)
-		minetest.after(15,
-			function(pos, node)
-				local meta = minetest.get_meta(pos)
-				if meta:get_string("item") ~= "" then
-					local entity_pos = pos
-					if node.name == "itemframes:pedestal" then
-						entity_pos = {x=pos.x,y=pos.y+1,z=pos.z}
-					end
-					local objs = minetest.get_objects_inside_radius(entity_pos, 0.5)
+		local meta = minetest.get_meta(pos)
+		if meta:get_string("item") ~= "" then
+			local entity_pos = pos
+			if node.name == "itemframes:pedestal" then
+				entity_pos = {x=pos.x,y=pos.y+1,z=pos.z}
+			end
+			local objs = minetest.get_objects_inside_radius(entity_pos, 0.5)
 
-					if #objs ~= 1 then
-						update_item(pos, node)
-					end
+			if #objs ~= 1 then
+
+				if #objs > 1 then
+					minetest.log("action","Removing " .. #objs-1 .. " extra " ..
+						dump(objs[1]:get_properties().textures[1]) .. " found in " ..
+						node.name .. " at " .. minetest.pos_to_string(pos))
 				end
-			end,
-		pos, node)
+
+				update_item(pos, node)
+			end
+		end
 	end
 })
 
